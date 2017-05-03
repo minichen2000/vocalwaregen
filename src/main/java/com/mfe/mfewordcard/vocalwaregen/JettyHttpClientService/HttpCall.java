@@ -30,15 +30,16 @@ public class HttpCall
     }
 
     private ContentResponse sendRequest(Request req) throws InterruptedException, ExecutionException, TimeoutException {
-        log.info("req: "+req.toString());
-        log.info("req.getHost: "+req.getHost());
-        log.info("req.getPort: "+req.getPort());
-        log.info("req.getPath: "+req.getPath());
-        log.info("req.getHeaders: "+req.getHeaders().toString());
+        log.debug("req: "+req.toString());
+        log.debug("req.getHost: "+req.getHost());
+        log.debug("req.getPort: "+req.getPort());
+        log.debug("req.getPath: "+req.getPath());
+        log.debug("req.getHeaders: "+req.getHeaders().toString());
+        log.debug("req.url:"+req.getURI().toString());
         ContentResponse resp=req.send();
 
-        log.info("Resp: Http code: "+resp.getStatus()+"\nReason: "+resp.getReason()+"\nContent:\n"+resp.getContentAsString());
-        log.info("Resp: Headers: \n"+resp.getHeaders());
+        log.debug("Resp: Http code: "+resp.getStatus()+"\nReason: "+resp.getReason()+"\nContent:\n"+resp.getContentAsString());
+        log.debug("Resp: Headers: \n"+resp.getHeaders());
         return resp;
     }
 

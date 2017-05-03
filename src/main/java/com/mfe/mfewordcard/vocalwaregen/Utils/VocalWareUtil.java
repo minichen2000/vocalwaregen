@@ -22,6 +22,8 @@ public class VocalWareUtil {
         String url= ConfLoader.getInstance().getConf(ConfigKey.vocalware_url);
         return HttpCall.instance().getAsFile(url, null, genQueryParams(EID, LID, VID, TXT, EXT, FX_TYPE, FX_LEVEL, ACC, API, SESSION, HTTP_ERR, SECRET),
                 dest_file);
+        /*genQueryParams(EID, LID, VID, TXT, EXT, FX_TYPE, FX_LEVEL, ACC, API, SESSION, HTTP_ERR, SECRET);
+        return true;*/
     }
     static private List<KeyValuePair> genQueryParams(int EID, int LID, int VID, String TXT, String EXT, String FX_TYPE, String FX_LEVEL, String ACC, String API, String SESSION, String HTTP_ERR, String SECRET){
         List<KeyValuePair> params=new LinkedList<KeyValuePair>();
@@ -54,6 +56,10 @@ public class VocalWareUtil {
         s+=(null==SESSION ? "" : SESSION);
         s+=(null==HTTP_ERR ? "" : HTTP_ERR);
         s+=(null==SECRET ? "" : SECRET);
-        return MD5.md5(s);
+
+        String md5=MD5.md5(s);
+        //System.out.println("CS.s:"+s);
+        //System.out.println("CS.md5:"+md5);
+        return md5;
     }
 }

@@ -2,6 +2,10 @@ package com.mfe.mfewordcard.vocalwaregen;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mfe.mfewordcard.vocalwaregen.Utils.FileUtils;
+import com.mfe.mfewordcard.vocalwaregen.Utils.MfeUnit.MfeUnit;
+import com.mfe.mfewordcard.vocalwaregen.Utils.MfeUtils;
 import com.mfe.mfewordcard.vocalwaregen.Utils.VocalWareUtil;
 import com.mfe.mfewordcard.vocalwaregen.constants.ConfLoader;
 import com.mfe.mfewordcard.vocalwaregen.constants.ConfLoaderException;
@@ -21,58 +25,70 @@ import java.util.List;
 public class Main {
     private static Logger log;
     public static void main(String[] args) throws Exception{
+        /*System.out.println(MfeUtils.word2AudioName("I have a pencil.", null));
+        System.out.println(MfeUtils.word2AudioName("Stand up, Joy. Show me your pencil. Sit down, please.", null));
+        System.out.println(MfeUtils.word2AudioName("Open your eyes, what's missing?", null));
+        System.out.println(MfeUtils.word2AudioName("Hi! I'm Angel.", null));
+        System.out.println(MfeUtils.word2AudioName("book", null));
+        MfeUnit u=MfeUtils.genUnit("/Users/minichen/gitrepo/bitbucket/mfewordcard2_textbook_scan/textbook/pep-1/g-1-1/u-1/u.json");
+        System.out.println((new ObjectMapper()).writeValueAsString(u));
+        System.exit(0);*/
         loadConf(args);
-
         confLog();
         log = LogManager.getLogger(Main.class);
-
         configProxy();
-        if(ConfLoader.getInstance().getBoolean(ConfigKey.url_only)){
-            String url= VocalWareUtil.genUrl(
-                    ConfLoader.getInstance().getInt(ConfigKey.engine_id),
-                    ConfLoader.getInstance().getInt(ConfigKey.language_id),
-                    ConfLoader.getInstance().getInt(ConfigKey.voice_id),
-                    ConfLoader.getInstance().getConf(ConfigKey.text),
-                    ConfLoader.getInstance().getConf(ConfigKey.ext),
-                    "",
-                    "",
-                    ConfLoader.getInstance().getConf(ConfigKey.account_id),
-                    ConfLoader.getInstance().getConf(ConfigKey.api_id),
-                    "",
-                    "1",
-                    ConfLoader.getInstance().getConf(ConfigKey.secret_phrase)
-            );
-            System.out.println("url:\n"+url);
-            System.exit(0);
-        }else{
-            String fn=ConfLoader.getInstance().getConf(ConfigKey.file_name);
-            if(fn.trim().startsWith("./")){
-                fn= Paths.get(".").toAbsolutePath().normalize().toString()+fn.substring(1);
+        if(!ConfLoader.getInstance().getConf(ConfigKey.search_dir).isEmpty() &&
+                !ConfLoader.getInstance().getConf(ConfigKey.output_dir).isEmpty()){
+            if(MfeUtils.genVoicesFromSearchPathUnitJsonFile(ConfLoader.getInstance().getConf(ConfigKey.search_dir),
+                    ConfLoader.getInstance().getConf(ConfigKey.output_dir), false)){
+                System.out.println("\n=====Done=====\n");
             }
-            boolean rlt=VocalWareUtil.downloadVoiceStream(
-                    ConfLoader.getInstance().getInt(ConfigKey.engine_id),
-                    ConfLoader.getInstance().getInt(ConfigKey.language_id),
-                    ConfLoader.getInstance().getInt(ConfigKey.voice_id),
-                    ConfLoader.getInstance().getConf(ConfigKey.text),
-                    ConfLoader.getInstance().getConf(ConfigKey.ext),
-                    "",
-                    "",
-                    ConfLoader.getInstance().getConf(ConfigKey.account_id),
-                    ConfLoader.getInstance().getConf(ConfigKey.api_id),
-                    "",
-                    "1",
-                    ConfLoader.getInstance().getConf(ConfigKey.secret_phrase),
-                    fn
-            );
-            if(rlt){
-                System.out.println("Saved to "+fn);
+
+        }else if(!ConfLoader.getInstance().getConf(ConfigKey.text).isEmpty()){
+            if(ConfLoader.getInstance().getBoolean(ConfigKey.url_only)){
+                String url= VocalWareUtil.genUrl(
+                        ConfLoader.getInstance().getInt(ConfigKey.engine_id),
+                        ConfLoader.getInstance().getInt(ConfigKey.language_id),
+                        ConfLoader.getInstance().getInt(ConfigKey.voice_id),
+                        ConfLoader.getInstance().getConf(ConfigKey.text),
+                        ConfLoader.getInstance().getConf(ConfigKey.ext),
+                        "",
+                        "",
+                        ConfLoader.getInstance().getConf(ConfigKey.account_id),
+                        ConfLoader.getInstance().getConf(ConfigKey.api_id),
+                        "",
+                        "1",
+                        ConfLoader.getInstance().getConf(ConfigKey.secret_phrase)
+                );
+                System.out.println("url:\n"+url);
+                System.exit(0);
             }else{
-                System.out.println("Generate voice failed.");
+                String fn=ConfLoader.getInstance().getConf(ConfigKey.file_name);
+                fn= FileUtils.genAbsFilename(fn);
+                boolean rlt=VocalWareUtil.downloadVoiceStream(
+                        ConfLoader.getInstance().getInt(ConfigKey.engine_id),
+                        ConfLoader.getInstance().getInt(ConfigKey.language_id),
+                        ConfLoader.getInstance().getInt(ConfigKey.voice_id),
+                        ConfLoader.getInstance().getConf(ConfigKey.text),
+                        ConfLoader.getInstance().getConf(ConfigKey.ext),
+                        "",
+                        "",
+                        ConfLoader.getInstance().getConf(ConfigKey.account_id),
+                        ConfLoader.getInstance().getConf(ConfigKey.api_id),
+                        "",
+                        "1",
+                        ConfLoader.getInstance().getConf(ConfigKey.secret_phrase),
+                        fn
+                );
+                if(rlt){
+                    System.out.println("Saved to "+fn);
+                    System.out.println("\n=====Done=====\n");
+                }else{
+                    System.out.println("Generate voice failed.");
+                }
             }
-            System.exit(0);
         }
-
-
+        System.exit(0);
     }
 
     private static void confLog() throws Exception{
@@ -158,13 +174,19 @@ public class Main {
             @Parameter(names={"-"+ConfigKey.file_name}, order = 13, description = "Saved file name")
             private String file_name="gen.mp3";
 
+            @Parameter(names={"-"+ConfigKey.output_dir}, order = 14, description = "Output directory")
+            private String output_dir="";
+
+            @Parameter(names={"-"+ConfigKey.search_dir}, order = 15, description = "u.json file searching directory")
+            private String search_dir="";
+
             @Parameter(names={"-"+ConfigKey.log_level}, order = 99, description = "1: error, 2: warn, 3: info, 4: debug")
             private int log_level=1;
 
             @Parameter(names={"-help"}, order = 100, help=true, description = "Show this help")
             private boolean help=false;
 
-            @Parameter(description = "Text to generate voice.", required = true)
+            @Parameter(description = "Text to generate voice.")
             private List<String> text = new ArrayList<>();
         }
         Args args=new Args();
@@ -189,6 +211,8 @@ public class Main {
         ConfLoader.getInstance().setConf(ConfigKey.secret_phrase, args.secret_phrase);
         ConfLoader.getInstance().setConf(ConfigKey.vocalware_url, args.vocalware_url);
         ConfLoader.getInstance().setConf(ConfigKey.file_name, args.file_name);
+        ConfLoader.getInstance().setConf(ConfigKey.search_dir, args.search_dir);
+        ConfLoader.getInstance().setConf(ConfigKey.output_dir, args.output_dir);
         ConfLoader.getInstance().setBoolean(ConfigKey.url_only, args.url_only);
         ConfLoader.getInstance().setConf(ConfigKey.text, args.text.size()>0 ? args.text.get(0) : "");
 

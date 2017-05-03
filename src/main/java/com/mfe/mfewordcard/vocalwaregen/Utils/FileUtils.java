@@ -1,6 +1,7 @@
 package com.mfe.mfewordcard.vocalwaregen.Utils;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,25 @@ public class FileUtils {
 
         targetDir.mkdirs();
     }
+    static public void searchFiles(String dir, String name_match, List<String> rlt){
+		File d=new File(dir);
+		if(!d.isDirectory()) return;
+		for(File file : d.listFiles()){
+			if(file.isDirectory()){
+				searchFiles(file.getAbsolutePath(), name_match, rlt);
+			}else if(file.getName().matches(name_match)){
+				rlt.add(file.getAbsolutePath());
+			}
+		}
+	}
+
+    static public String genAbsFilename(String filename){
+		if(filename.trim().startsWith("./")){
+			return Paths.get(".").toAbsolutePath().normalize().toString()+filename.substring(1);
+		}else{
+			return filename;
+		}
+	}
 
 	static public List<String> readFileToStringArray(String filename,
 			String ignoreLinePre, String encoding) {
@@ -126,6 +146,17 @@ public class FileUtils {
 			return false;
 		}
 		return true;
+	}
+
+	public static String readFile2String(String filename, String encoding){
+		byte[] bf=getBytes(filename);
+		if(null==bf) return null;
+		try {
+			return new String(bf, null==encoding ? "UTF-8" :encoding);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	/**

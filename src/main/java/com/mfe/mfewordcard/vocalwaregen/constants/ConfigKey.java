@@ -38,4 +38,8 @@ public class ConfigKey {
 
 	public static final String file_name="file_name";
 
+	public static final String output_dir="output_dir";
+
+	public static final String search_dir="search_dir";
+
 }
