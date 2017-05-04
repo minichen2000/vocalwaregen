@@ -29,7 +29,7 @@ public class HttpCall
         return inst;
     }
 
-    private ContentResponse sendRequest(Request req) throws InterruptedException, ExecutionException, TimeoutException {
+    private ContentResponse forwardRequest(Request req) throws InterruptedException, ExecutionException, TimeoutException {
         log.debug("req: "+req.toString());
         log.debug("req.getHost: "+req.getHost());
         log.debug("req.getPort: "+req.getPort());
@@ -42,11 +42,27 @@ public class HttpCall
         log.debug("Resp: Headers: \n"+resp.getHeaders());
         return resp;
     }
+    public ContentResponse forwardRequest(String method, String url, String data, String contentType, String acceptContentType) throws InterruptedException, ExecutionException, TimeoutException {
+        //Do not auto unzip
+        HttpClientService.instance().getHttpClient().getContentDecoderFactories().clear();
+        Request req=HttpClientService.instance().getHttpClient().newRequest(url).method(method);
+
+        if(null!=data && !data.isEmpty()){
+            req.content(new StringContentProvider(data), contentType);
+        }
+        if(null!=acceptContentType && !acceptContentType.isEmpty()){
+            req.header("Accept", acceptContentType);
+        }
+        if(null!=contentType && !contentType.isEmpty()){
+            req.header("Content-Type", contentType);
+        }
+        return forwardRequest(req);
+    }
 
     private String sendRequestReturnString(Request req){
         try
         {
-            ContentResponse resp=sendRequest(req);
+            ContentResponse resp= forwardRequest(req);
 
             if( resp.getStatus() != 201
                     && resp.getStatus() != 200 )
@@ -66,7 +82,7 @@ public class HttpCall
     private boolean sendRequestReturnFile(Request req, String destFile){
         try
         {
-            ContentResponse resp=sendRequest(req);
+            ContentResponse resp= forwardRequest(req);
 
             if( resp.getStatus() != 201
                     && resp.getStatus() != 200 )
