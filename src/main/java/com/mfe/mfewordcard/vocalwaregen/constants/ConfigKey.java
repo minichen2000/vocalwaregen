@@ -4,7 +4,11 @@ public class ConfigKey {
 
 	public static final String reference_conf_files="reference_conf_files";
 
-	public static final String debug="debug";
+	public static final String webapp="webapp";
+
+	public static final String server_port = "server_port";
+
+	public static final int default_server_port = 8083;
 
 	public static final String log_level="log_level";
 

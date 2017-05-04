@@ -14,7 +14,16 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.FilterMapping;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.eclipse.jetty.webapp.WebAppContext;
+
+import javax.servlet.ServletException;
 import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,13 +46,15 @@ public class Main {
         confLog();
         log = LogManager.getLogger(Main.class);
         configProxy();
-        if(!ConfLoader.getInstance().getConf(ConfigKey.search_dir).isEmpty() &&
+        if(ConfLoader.getInstance().getBoolean(ConfigKey.webapp)){
+            startWebApp();
+        }else if(!ConfLoader.getInstance().getConf(ConfigKey.search_dir).isEmpty() &&
                 !ConfLoader.getInstance().getConf(ConfigKey.output_dir).isEmpty()){
             if(MfeUtils.genVoicesFromSearchPathUnitJsonFile(ConfLoader.getInstance().getConf(ConfigKey.search_dir),
                     ConfLoader.getInstance().getConf(ConfigKey.output_dir), false)){
                 System.out.println("\n=====Done=====\n");
             }
-
+            System.exit(0);
         }else if(!ConfLoader.getInstance().getConf(ConfigKey.text).isEmpty()){
             if(ConfLoader.getInstance().getBoolean(ConfigKey.url_only)){
                 String url= VocalWareUtil.genUrl(
@@ -61,7 +72,6 @@ public class Main {
                         ConfLoader.getInstance().getConf(ConfigKey.secret_phrase)
                 );
                 System.out.println("url:\n"+url);
-                System.exit(0);
             }else{
                 String fn=ConfLoader.getInstance().getConf(ConfigKey.file_name);
                 fn= FileUtils.genAbsFilename(fn);
@@ -87,8 +97,8 @@ public class Main {
                     System.out.println("Generate voice failed.");
                 }
             }
+            System.exit(0);
         }
-        System.exit(0);
     }
 
     private static void confLog() throws Exception{
@@ -132,6 +142,9 @@ public class Main {
     private static void parseCommandLine(String[] _args){
 
         class Args{
+            @Parameter(names={"-"+ConfigKey.server_port}, order = 0, description="Http server port")
+            private int server_port=ConfigKey.default_server_port;
+
             @Parameter(names={"-"+ConfigKey.conf_file}, order = 1, description = "Configuation file")
             private String conf_file="";
 
@@ -180,6 +193,9 @@ public class Main {
             @Parameter(names={"-"+ConfigKey.search_dir}, order = 15, description = "u.json file searching directory")
             private String search_dir="";
 
+            @Parameter(names={"-"+ConfigKey.webapp}, order = 16, description = "Start webapp")
+            private boolean webapp=false;
+
             @Parameter(names={"-"+ConfigKey.log_level}, order = 99, description = "1: error, 2: warn, 3: info, 4: debug")
             private int log_level=1;
 
@@ -196,12 +212,14 @@ public class Main {
             System.exit(0);
         }
 
+        ConfLoader.getInstance().setInt(ConfigKey.server_port, args.server_port);
         ConfLoader.getInstance().setConf(ConfigKey.conf_file, args.conf_file);
         ConfLoader.getInstance().setConf(ConfigKey.log_conf_file, args.log_conf_file);
         ConfLoader.getInstance().setConf(ConfigKey.proxy_host, args.proxy_host);
         ConfLoader.getInstance().setInt(ConfigKey.proxy_port, args.proxy_port);
         ConfLoader.getInstance().setInt(ConfigKey.log_level, args.log_level);
 
+        ConfLoader.getInstance().setBoolean(ConfigKey.webapp, args.webapp);
         ConfLoader.getInstance().setInt(ConfigKey.engine_id, args.engine_id);
         ConfLoader.getInstance().setInt(ConfigKey.language_id, args.language_id);
         ConfLoader.getInstance().setInt(ConfigKey.voice_id, args.voice_id);
@@ -227,5 +245,70 @@ public class Main {
             System.setProperty("http.proxyHost", host);
             System.setProperty("http.proxyPort", ""+port);
         }
+    }
+
+    private static void startWebApp() throws ConfLoaderException {
+        //webapp context
+        WebAppContext webAppContext = new WebAppContext();
+        webAppContext.setContextPath("/");
+        webAppContext.setDescriptor("webapp" + "/WEB-INF/web.xml");
+
+        URL webAppDir = Thread.currentThread().getContextClassLoader().getResource("webapp");
+        if (webAppDir == null) {
+            throw new RuntimeException(String.format("No %s directory was found into the JAR file", "webapp"));
+        }
+        try {
+            //log.debug("webAppDir: "+webAppDir.toString());
+            //log.debug("webAppContext.setResourceBase: "+webAppDir.toURI().toString());
+            webAppContext.setResourceBase(webAppDir.toURI().toString());
+            webAppContext.setParentLoaderPriority(true);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+        ////////////////////////
+
+        final int port = ConfLoader.getInstance().getInt(ConfigKey.server_port);
+        final Server server = new Server(port);
+        server.setHandler(webAppContext);
+
+        //CORS filter
+        FilterHolder filter = new FilterHolder(CrossOriginFilter.class);
+        filter.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
+        filter.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "POST,GET,OPTIONS,PUT,DELETE,HEAD,PATCH");
+        filter.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With, Content-Type, Accept, Origin, access-control-allow-origin");
+        filter.setName("cross-origin");
+        FilterMapping fm = new FilterMapping();
+        fm.setFilterName("cross-origin");
+        fm.setPathSpec("*");
+        webAppContext.getServletHandler().addFilter(filter, fm );
+
+        ////////////////////////
+
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    try {
+                        server.start();
+                        log.info("Vocalwaregen server started@" + port);
+                        server.join();
+                    } catch (Exception e) {
+                        log.error("Vocalwaregen server start@" + port + " failed", e);
+                        shutDown();
+                    }
+                } finally {
+                    log.error("Vocalwaregen server exit@" + port + " failed");
+                    server.destroy();
+                }
+
+            }
+        }).start();
+    }
+
+    private static void shutDown() {
+        log.info("Shutdown.");
+        System.exit(1);
     }
 }
