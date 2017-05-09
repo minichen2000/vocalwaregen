@@ -37,6 +37,55 @@ public class MfeUtils {
             return null;
         }
     }
+
+    private static boolean genVoicesFromStringList(List<String> w_list, String output_dir, boolean overwrite){
+        try {
+            for(String w: w_list) {
+                if (null == w || w.isEmpty()) {
+                    log.warn("Word is null or empty, skip.");
+                    continue;
+                }
+                String fullname = FileUtils.genAbsFilename(output_dir + '/' + MfeUtils.word2AudioName(w, null));
+                log.debug("fullname:" + fullname);
+                if (!overwrite && (new File(fullname)).isFile()) {
+                    System.out.println("Already exits, skip: " + fullname);
+                    continue;
+                } else {
+                    boolean rlt = VocalWareUtil.downloadVoiceStream(
+                            ConfLoader.getInstance().getInt(ConfigKey.engine_id),
+                            ConfLoader.getInstance().getInt(ConfigKey.language_id),
+                            ConfLoader.getInstance().getInt(ConfigKey.voice_id),
+                            w,
+                            "mp3",
+                            "",
+                            "",
+                            ConfLoader.getInstance().getConf(ConfigKey.account_id),
+                            ConfLoader.getInstance().getConf(ConfigKey.api_id),
+                            "",
+                            "1",
+                            ConfLoader.getInstance().getConf(ConfigKey.secret_phrase),
+                            fullname
+                    );
+                    if (rlt) {
+                        System.out.println("Generated word: " + w);
+                        System.out.println("Generated fullname: " + fullname);
+                    } else {
+                        System.out.println("Generated failed, word: " + w);
+                        System.out.println("Generated failed fullname: " + fullname);
+                        return false;
+                    }
+                }
+            }
+        } catch (ConfLoaderException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+    public static boolean genVoicesFromInputPlainFile(String input_file, String output_dir, boolean overwrite){
+        List<String> w_list=FileUtils.readFileToStringArray(FileUtils.genAbsFilename(input_file), null, "utf-8");
+        return genVoicesFromStringList(w_list, output_dir, overwrite);
+    }
     public static boolean genVoicesFromSearchPathUnitJsonFile(String searchDir, String output_dir, boolean overwrite){
         List<String> uFiles=new LinkedList<String>();
         FileUtils.searchFiles(FileUtils.genAbsFilename(searchDir), "^u\\.json$", uFiles);
@@ -66,47 +115,6 @@ public class MfeUtils {
                 w_list.add(a.words);
             }
         }
-        try {
-            for(String w: w_list){
-                if(null==w || w.isEmpty()){
-                    log.warn("Word is null or empty, skip.");
-                    continue;
-                }
-                String fullname=FileUtils.genAbsFilename(output_dir+'/'+MfeUtils.word2AudioName(w, null));
-                log.debug("fullname:"+fullname);
-                if(!overwrite && (new File(fullname)).isFile()){
-                    System.out.println("Already exits, skip: "+fullname);
-                    continue;
-                }else{
-                    boolean rlt=VocalWareUtil.downloadVoiceStream(
-                            ConfLoader.getInstance().getInt(ConfigKey.engine_id),
-                            ConfLoader.getInstance().getInt(ConfigKey.language_id),
-                            ConfLoader.getInstance().getInt(ConfigKey.voice_id),
-                            w,
-                            "mp3",
-                            "",
-                            "",
-                            ConfLoader.getInstance().getConf(ConfigKey.account_id),
-                            ConfLoader.getInstance().getConf(ConfigKey.api_id),
-                            "",
-                            "1",
-                            ConfLoader.getInstance().getConf(ConfigKey.secret_phrase),
-                            fullname
-                    );
-                    if(rlt){
-                        System.out.println("Generated word: "+w);
-                        System.out.println("Generated fullname: "+fullname);
-                    }else{
-                        System.out.println("Generated failed, word: "+w);
-                        System.out.println("Generated failed fullname: "+fullname);
-                        return false;
-                    }
-                }
-            }
-            return true;
-        } catch (ConfLoaderException e) {
-            e.printStackTrace();
-            return false;
-        }
+        return genVoicesFromStringList(w_list, output_dir, overwrite);
     }
 }

@@ -48,6 +48,13 @@ public class Main {
         configProxy();
         if(ConfLoader.getInstance().getBoolean(ConfigKey.webapp)){
             startWebApp();
+        }else if(!ConfLoader.getInstance().getConf(ConfigKey.input_file).isEmpty() &&
+                !ConfLoader.getInstance().getConf(ConfigKey.output_dir).isEmpty()){
+            if(MfeUtils.genVoicesFromInputPlainFile(ConfLoader.getInstance().getConf(ConfigKey.input_file),
+                    ConfLoader.getInstance().getConf(ConfigKey.output_dir), false)){
+                System.out.println("\n=====Done=====\n");
+            }
+            System.exit(0);
         }else if(!ConfLoader.getInstance().getConf(ConfigKey.search_dir).isEmpty() &&
                 !ConfLoader.getInstance().getConf(ConfigKey.output_dir).isEmpty()){
             if(MfeUtils.genVoicesFromSearchPathUnitJsonFile(ConfLoader.getInstance().getConf(ConfigKey.search_dir),
@@ -193,7 +200,10 @@ public class Main {
             @Parameter(names={"-"+ConfigKey.search_dir}, order = 15, description = "u.json file searching directory")
             private String search_dir="";
 
-            @Parameter(names={"-"+ConfigKey.webapp}, order = 16, description = "Start webapp")
+            @Parameter(names={"-"+ConfigKey.input_file}, order = 16, description = "Plain input file path")
+            private String input_file="";
+
+            @Parameter(names={"-"+ConfigKey.webapp}, order = 17, description = "Start webapp")
             private boolean webapp=false;
 
             @Parameter(names={"-"+ConfigKey.log_level}, order = 99, description = "1: error, 2: warn, 3: info, 4: debug")
@@ -231,6 +241,7 @@ public class Main {
         ConfLoader.getInstance().setConf(ConfigKey.file_name, args.file_name);
         ConfLoader.getInstance().setConf(ConfigKey.search_dir, args.search_dir);
         ConfLoader.getInstance().setConf(ConfigKey.output_dir, args.output_dir);
+        ConfLoader.getInstance().setConf(ConfigKey.input_file, args.input_file);
         ConfLoader.getInstance().setBoolean(ConfigKey.url_only, args.url_only);
         ConfLoader.getInstance().setConf(ConfigKey.text, args.text.size()>0 ? args.text.get(0) : "");
 

@@ -46,4 +46,6 @@ public class ConfigKey {
 
 	public static final String search_dir="search_dir";
 
+	public static final String input_file="input_file";
+
 }
